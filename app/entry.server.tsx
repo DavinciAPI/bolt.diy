@@ -1,51 +1,32 @@
-import type { AppLoadContext, EntryContext } from '@remix-run/cloudflare';
-import { RemixServer } from '@remix-run/react';
-import { isbot } from 'isbot';
-import { renderHeadToString } from 'remix-island';
-import { Head } from './root';
-import { themeStore } from '~/lib/stores/theme';
-
-// Import from browser bundle instead
 import { renderToReadableStream } from 'react-dom/server.browser';
+import { RemixServer } from '@remix-run/react';
+import type { EntryContext } from '@remix-run/cloudflare';
 
 export default async function handleRequest(
   request: Request,
   responseStatusCode: number,
   responseHeaders: Headers,
-  remixContext: EntryContext,
-  _loadContext: AppLoadContext,
+  remixContext: EntryContext
 ) {
-  const callbackName = isbot(request.headers.get('user-agent'))
-    ? 'onAllReady'
-    : 'onShellReady';
-
-  const head = await renderHeadToString({ request, remixContext, Head });
-  
-  let didError = false;
   const stream = await renderToReadableStream(
-    <RemixServer
-      context={remixContext}
-      url={request.url}
-    />,
+    <RemixServer context={remixContext} url={request.url} />,
     {
-      [callbackName]: () => {
-        const body = new ReadableStream({
-          start(controller) {
-            controller.enqueue(head);
-          },
-        });
+      onShellReady() {
         responseHeaders.set('Content-Type', 'text/html');
-        return new Response(body, {
+        return new Response(stream, {
           headers: responseHeaders,
-          status: didError ? 500 : responseStatusCode,
+          status: responseStatusCode,
         });
       },
       onError(error) {
-        didError = true;
         console.error(error);
+        responseHeaders.set('Content-Type', 'text/html');
+        return new Response('Internal Server Error', {
+          headers: responseHeaders,
+          status: 500,
+        });
       },
     }
   );
-
   return stream;
 }
