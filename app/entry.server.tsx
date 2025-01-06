@@ -16,26 +16,26 @@ export default async function handleRequest(
     ? 'onAllReady'
     : 'onShellReady';
 
-  const head = await renderHeadToString({ request, remixContext, Head });
+  responseHeaders.set('Content-Type', 'text/html');
   
-  let didError = false;
-
   const stream = await renderToReadableStream(
     <RemixServer context={remixContext} url={request.url} />,
     {
       [callbackName]() {
-        responseHeaders.set('Content-Type', 'text/html');
         return new Response(stream, {
-          status: didError ? 500 : responseStatusCode,
-          headers: responseHeaders
+          headers: responseHeaders,
+          status: responseStatusCode
         });
       },
       onError(error) {
-        didError = true;
         console.error(error);
+        return new Response('Internal Server Error', { status: 500 });
       }
     }
   );
 
-  return stream;
+  return new Response(stream, {
+    headers: responseHeaders,
+    status: responseStatusCode
+  });
 }
