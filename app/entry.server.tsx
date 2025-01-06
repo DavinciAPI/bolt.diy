@@ -5,9 +5,8 @@ import { renderHeadToString } from 'remix-island';
 import { Head } from './root';
 import { themeStore } from '~/lib/stores/theme';
 
-// Import react-dom/server correctly
-import pkg from 'react-dom/server';
-const { renderToReadableStream } = pkg;
+// Import from browser bundle instead
+import { renderToReadableStream } from 'react-dom/server.browser';
 
 export default async function handleRequest(
   request: Request,
@@ -23,7 +22,6 @@ export default async function handleRequest(
   const head = await renderHeadToString({ request, remixContext, Head });
   
   let didError = false;
-
   const stream = await renderToReadableStream(
     <RemixServer
       context={remixContext}
